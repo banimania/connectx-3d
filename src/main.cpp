@@ -9,7 +9,23 @@ void resetBoard(int* board, int n) {
   }
 }
 
-void renderBoard(int* board, int n) {
+int getNextHighestBlock(int* board, int n, int x, int y) {
+  int h = -1;
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < n; j++) {
+      for (int k = 0; k < n; k++) {
+        if (x == i && y == k && j > h) {
+          if (board[i * n * n + j * n + k] != 0) {
+            h = j;
+          }
+        }
+      }
+    }
+  }
+  return h + 1;
+}
+
+void renderBoard(int* board, int n, Vector2 sel) {
   //Render Grid
   
   float h = n / 2.0f;
@@ -31,6 +47,10 @@ void renderBoard(int* board, int n) {
 
   rlEnd();
 
+  
+  DrawCube({sel.x * s, 2.5f + getNextHighestBlock(board, n, sel.x, sel.y) * s, sel.y * s}, s, s, s, {255, 255, 255, 55});
+  DrawCubeWires({sel.x * s, 2.5f + getNextHighestBlock(board, n, sel.x, sel.y) * s, sel.y * s}, s, s, s, {255, 255, 255, 255});
+
   //Draw Cubes
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < n; j++) {
@@ -45,14 +65,10 @@ void renderBoard(int* board, int n) {
   }
 }
 
-void handleKeyboard(Camera3D* camera) {
-  if (IsKeyDown(KEY_SPACE)) {
-    std::cout << "Space" << std::endl;
-  }
-}
-
 int main() {
   std::cout << "ConnectX 3D by danimania" << std::endl << std::endl;
+
+  Vector2 sel = {0, 0};
 
   int n;
   std::cout << "Board size: ";
@@ -65,7 +81,7 @@ int main() {
   *(board + 1) = 2;
 
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "ConnectX 3D");
-  
+
   SetTargetFPS(60);
 
   Camera3D* camera = new Camera3D();
@@ -76,9 +92,20 @@ int main() {
   camera->projection = CAMERA_PERSPECTIVE;
 
   while(!WindowShouldClose()) {
-    handleKeyboard(camera);
+    //Handle Input
+    if (IsKeyPressed(KEY_W)) {
+      sel.x--;
+    } else if (IsKeyPressed(KEY_S)) {
+      sel.x++;
+    } else if (IsKeyPressed(KEY_A)) {
+      sel.y++;
+    } else if (IsKeyPressed(KEY_D)) {
+      sel.y--;
+    } else if (IsKeyPressed(KEY_SPACE)) {
+      std::cout << getNextHighestBlock(board, n, sel.x, sel.y) << std::endl;
+    }
 
-    UpdateCamera(camera, CAMERA_ORBITAL);
+    //UpdateCamera(camera, CAMERA_ORBITAL);
 
     BeginDrawing();
 
@@ -86,8 +113,8 @@ int main() {
 
     BeginMode3D(*camera);
 
-    renderBoard(board, n);
-    
+    renderBoard(board, n, sel);
+
     EndMode3D();
 
     EndDrawing();

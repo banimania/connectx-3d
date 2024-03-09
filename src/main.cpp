@@ -25,12 +25,13 @@ int getNextHighestBlock(int* board, int n, int x, int z) {
   return hi + 1;
 }
 
-void placeBlock(int* board, int n, int x, int z, int p) {
+int placeBlock(int* board, int n, int x, int z, int p) {
   int highest = getNextHighestBlock(board, n, x, z);
 
-  if (highest >= n || x >= n || z >= n || x < 0 || z < 0) return;
+  if (highest >= n || x >= n || z >= n || x < 0 || z < 0) return 0;
 
   *(board + x * n * n + highest * n + z) = p;
+  return 1;
 }
 
 void renderBoard(int* board, int n, Vector2 sel, float s, int g) {
@@ -335,6 +336,7 @@ int main() {
   int* board = new int[n * n * n];
   resetBoard(board, n);
 
+  SetConfigFlags(FLAG_MSAA_4X_HINT);
   SetConfigFlags(FLAG_VSYNC_HINT);
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "ConnectX 3D");
 
@@ -351,38 +353,53 @@ int main() {
   camera->fovy = 60.0f;
   camera->projection = CAMERA_PERSPECTIVE;
 
+  double lastGamePadX = GetTime();
+  double lastGamePadY = GetTime();
+  double gamePadCooldown = 0.25f;
+  
   int p = 1;
   while(!WindowShouldClose()) {
+    double now = GetTime();
     //Handle Input
     if (!g) {
-      if (IsKeyPressed(KEY_W)) {
+      if (IsKeyPressed(KEY_W) || (GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_Y) <= -0.5f) && (now - lastGamePadY > gamePadCooldown)) {
         sel.x--;
+        lastGamePadY = now;
         if (sel.x < 0) sel.x = 0;
-      } else if (IsKeyPressed(KEY_S)) {
+      } else if (IsKeyPressed(KEY_S) || (GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_Y) >= 0.5f) && (now - lastGamePadY > gamePadCooldown)) {
         sel.x++;
+        lastGamePadY = now;
         if (sel.x >= n) sel.x = n - 1;
-      } else if (IsKeyPressed(KEY_A)) {
+      } else if (IsKeyPressed(KEY_A) || (GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_X) <= -0.5f) && (now - lastGamePadX > gamePadCooldown)) {
         sel.y++;
+        lastGamePadX = now;
         if (sel.y >= n) sel.y = n - 1;
-      } else if (IsKeyPressed(KEY_D)) {
+      } else if (IsKeyPressed(KEY_D) || (GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_X) >= 0.5f) && (now - lastGamePadX > gamePadCooldown)) {
         sel.y--;
+        lastGamePadX = now;
         if (sel.y < 0) sel.y = 0;
-      } else if (IsKeyPressed(KEY_SPACE)) {
-        placeBlock(board, n, sel.x, sel.y, p);
-        p = 3 - p;
+      } else if (IsKeyPressed(KEY_SPACE) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+        if (placeBlock(board, n, sel.x, sel.y, p)) {
+          p = 3 - p;
+        };
       }
     }
 
-    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_LEFT)) {
+    if (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X) >= 0.5f || GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X) <= -0.5f) {
+      Matrix rotation = MatrixRotate(Vector3Normalize(camera->up), cSpeed * GetFrameTime() * (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X) >= 0.5f ? 1 : -1));
+      Vector3 view = Vector3Subtract(camera->position, camera->target);
+      view = Vector3Transform(view, rotation);
+      camera->position = Vector3Add(camera->target, view);
+    } else if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_LEFT)) {
       Matrix rotation = MatrixRotate(Vector3Normalize(camera->up), cSpeed * GetFrameTime() * (IsKeyDown(KEY_RIGHT) ? 1 : -1));
       Vector3 view = Vector3Subtract(camera->position, camera->target);
       view = Vector3Transform(view, rotation);
       camera->position = Vector3Add(camera->target, view);
-    } else if (IsKeyDown(KEY_UP)) {
+    } else if (IsKeyDown(KEY_UP) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
       camera->position = Vector3Add(camera->position, {-cZoom, -cZoom, -cZoom});
-    } else if (IsKeyDown(KEY_DOWN)) {
+    } else if (IsKeyDown(KEY_DOWN) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
       camera->position = Vector3Add(camera->position, {cZoom, cZoom, cZoom});
-    } else if (IsKeyDown(KEY_R)) {
+    } else if (IsKeyDown(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) {
       camera->position = (Vector3) {40.0f * n * f, 15.0f * n * f * 1.5f, 40.0f * n * f};
       camera->target = (Vector3){0.0f, 0.0f, 0.0f};
     }

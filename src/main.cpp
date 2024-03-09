@@ -1,6 +1,7 @@
 #include <raylib.h>
 #include <rlgl.h>
 #include <iostream>
+#include <string>
 #include "../include/config.hpp"
 
 void resetBoard(int* board, int n) {
@@ -12,61 +13,43 @@ void resetBoard(int* board, int n) {
 int getNextHighestBlock(int* board, int n, int x, int z) {
   int hi = -1;
 
-  float h = n / 2.0f;
-  for (int i = -h; i < h; i++) {
-    for (int j = 0; j < n; j++) {
-      for (int k = -h; k < h; k++) {
-        if (x == i && z == k && j > hi) {
-          if (board[i * n * n + j * n + k] != 0) {
-            hi = j;
-          }
-        }
-      }
+  for (int j = 0; j < n; j++) {
+    int v = *(board + x * n * n + j * n + z);
+    if (v == 1 || v == 2) {
+      hi = j;
     }
   }
+
   return hi + 1;
 }
 
 void placeBlock(int* board, int n, int x, int z, int p) {
-  float h = n / 2.0f;
-
   int highest = getNextHighestBlock(board, n, x, z);
 
-  if (highest >= n) return;
+  if (highest >= n || x >= n || z >= n || x < 0 || z < 0) return;
 
   *(board + x * n * n + highest * n + z) = p;
 }
 
-void renderBoard(int* board, int n, Vector2 sel) {
+void renderBoard(int* board, int n, Vector2 sel, float s) {
   //Render Grid
-
-  float h = n / 2.0f;
-  float s = 5.0f;
-
-  rlBegin(RL_LINES);
-
-  for (float i = -h; i <= h; i++) {
-    rlColor3f(0.75f, 0.75f, 0.75f);
-    rlColor3f(0.75f, 0.75f, 0.75f);
-    rlColor3f(0.75f, 0.75f, 0.75f);
-    rlColor3f(0.75f, 0.75f, 0.75f);
-
-    rlVertex3f((float) i * s, 0.0f, (float) -h * s);
-    rlVertex3f((float) i * s, 0.0f, (float) h * s);
-    rlVertex3f((float) -h * s, 0.0f, (float) i * s);
-    rlVertex3f((float) h * s, 0.0f, (float) i * s);
+  Color gridColor = Color{255, 255, 255, 255};
+  for (float i = 0; i < n; i++) {
+    for (float j = 0; j < n; j++) {
+      DrawLine3D({i * s, 0.0f, j * s}, {i * s + s, 0.0f, j * s}, gridColor);
+      DrawLine3D({i * s, 0.0f, j * s}, {i * s, 0.0f, j * s + s}, gridColor);
+      DrawLine3D({i * s + s, 0.0f, j * s}, {i * s + s, 0.0f, j * s + s}, gridColor);
+      DrawLine3D({i * s, 0.0f, j * s + s}, {i * s + s, 0.0f, j * s + s}, gridColor);
+    }
   }
 
-  rlEnd();
-
   //Render Cubes
-
-  for (float i = -h + 0.5f; i < h; i++) {
-    for (float j = 0; j < n; j++) {
-      for (float k = -h + 0.5f; k < h; k++) {
-        int v = *(board + (int) i * n * n + (int) j * n + (int) k);
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < n; j++) {
+      for (int k = 0; k < n; k++) {
+        int v = *(board + i * n * n + j * n + k);
         if (v == 1 || v == 2) {
-          Vector3 pos = {i * s, 2.5f + j * s, (float) k * s};
+          Vector3 pos = {s / 2.0f + i * s, s / 2.0f + j * s, s / 2.0f + k * s};
           DrawCube(pos, s, s, s, (v == 1 ? Color{255, 0, 0, 45} : Color{0, 0, 255, 45}));
           DrawCubeWires(pos, s, s, s, (v == 1 ? Color{255, 0, 0, 255} : Color{0, 0, 255, 255}));
         }
@@ -74,7 +57,7 @@ void renderBoard(int* board, int n, Vector2 sel) {
     }
   }
 
-  Vector3 pos = {sel.x * s, 2.5f + getNextHighestBlock(board, n, sel.x, sel.y) * s, sel.y * s};
+  Vector3 pos = {sel.x * s + s / 2.0f, s / 2.0f + getNextHighestBlock(board, n, sel.x, sel.y) * s, sel.y * s + s / 2.0f};
   DrawCube(pos, s, s, s, {255, 255, 255, 55});
   DrawCubeWires(pos, s, s, s, {255, 255, 255, 255});
 }
@@ -84,6 +67,8 @@ int main() {
 
   Vector2 sel = {0, 0};
 
+  float s = 5.0f;
+
   int n;
   std::cout << "Board size: ";
   std::cin >> n;
@@ -91,6 +76,7 @@ int main() {
   int* board = new int[n * n * n];
   resetBoard(board, n);
 
+  SetConfigFlags(FLAG_VSYNC_HINT);
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "ConnectX 3D");
 
   SetTargetFPS(60);
@@ -98,7 +84,7 @@ int main() {
   float f = 0.2f;
 
   Camera3D* camera = new Camera3D();
-  camera->position = (Vector3) {30.0f * n * f, 20.0f * n * f * 1.5f, 30.0f * n * f};
+  camera->position = (Vector3) {40.0f * n * f, 15.0f * n * f * 1.5f, 40.0f * n * f};
   camera->target = (Vector3){0.0f, 0.0f, 0.0f};
   camera->up = (Vector3){0.0f, 1.0f, 0.0f};
   camera->fovy = 60.0f;
@@ -109,12 +95,16 @@ int main() {
     //Handle Input
     if (IsKeyPressed(KEY_W)) {
       sel.x--;
+      if (sel.x < 0) sel.x = 0;
     } else if (IsKeyPressed(KEY_S)) {
       sel.x++;
+      if (sel.x >= n) sel.x = n - 1;
     } else if (IsKeyPressed(KEY_A)) {
       sel.y++;
+      if (sel.y >= n) sel.y = n - 1;
     } else if (IsKeyPressed(KEY_D)) {
       sel.y--;
+      if (sel.y < 0) sel.y = 0;
     } else if (IsKeyPressed(KEY_SPACE)) {
       placeBlock(board, n, sel.x, sel.y, p);
       p = 3 - p;
@@ -128,10 +118,13 @@ int main() {
 
     BeginMode3D(*camera);
 
-    renderBoard(board, n, sel);
+    renderBoard(board, n, sel, s);
 
     EndMode3D();
 
+    std::string moveString = "Player " + std::to_string(p) + " moves";
+    DrawText(moveString.c_str(), SCREEN_WIDTH / 2.0f - MeasureText(moveString.c_str(), 30.0f) / 2.0f, SCREEN_HEIGHT - 50.0f, 30.0f, {255, 255, 255, 255});
+    
     EndDrawing();
   }
 

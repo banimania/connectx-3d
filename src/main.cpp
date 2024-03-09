@@ -1,7 +1,9 @@
 #include <raylib.h>
+#include <raymath.h>
 #include <rlgl.h>
 #include <iostream>
 #include <string>
+#include <vector>
 #include "../include/config.hpp"
 
 void resetBoard(int* board, int n) {
@@ -48,10 +50,20 @@ void renderBoard(int* board, int n, Vector2 sel, float s, int g) {
     for (int j = 0; j < n; j++) {
       for (int k = 0; k < n; k++) {
         int v = *(board + i * n * n + j * n + k);
-        if (v == 1 || v == 2) {
-          Vector3 pos = {s / 2.0f + i * s, s / 2.0f + j * s, s / 2.0f + k * s};
-          DrawCube(pos, s, s, s, (v == 1 ? Color{255, 0, 0, 45} : Color{0, 0, 255, 45}));
-          DrawCubeWires(pos, s, s, s, (v == 1 ? Color{255, 0, 0, 255} : Color{0, 0, 255, 255}));
+        Vector3 pos = {s / 2.0f + i * s, s / 2.0f + j * s, s / 2.0f + k * s};
+        if (!g) {
+          if (v == 1 || v == 2) {
+            DrawCube(pos, s, s, s, (v == 1 ? Color{255, 0, 0, 45} : Color{0, 0, 255, 45}));
+            DrawCubeWires(pos, s, s, s, (v == 1 ? Color{255, 0, 0, 255} : Color{0, 0, 255, 255}));
+          }
+        } else {
+          if (v == 3 || v == 4) {
+            DrawCube(pos, s, s, s, (v == 3 ? Color{255, 155, 0, 85} : Color{0, 255, 255, 45}));
+            DrawCubeWires(pos, s, s, s, (v == 3 ? Color{255, 155, 0, 255} : Color{0, 255, 255, 255}));
+          } else if (v == 1 || v == 2) {
+            DrawCube(pos, s, s, s, (v == 1 ? Color{255, 0, 0, 45} : Color{0, 0, 255, 45}));
+            DrawCubeWires(pos, s, s, s, (v == 1 ? Color{255, 0, 0, 255} : Color{0, 0, 255, 255}));
+          }
         }
       }
     }
@@ -70,117 +82,225 @@ bool checkWinner(int* board, int n, int p, int x) {
       for (int k = 0; k < n; k++) {
         if (*(board + i * n * n + j * n + k) == p) {
           int c = 0;
-          
+          std::vector<int> toOutline;
+
           //Horizontal
           do {
             if (*(board + (c + i) * n * n + j * n + k) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back((c + i - 1) * n * n + j * n + k);
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            };
           } while (c);
-          
+
+          toOutline.clear();
+
           //Vertical
           do {
             if (*(board + i * n * n + j * n + k + c) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back(i * n * n + j * n + k + c - 1);
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            }
           } while (c);
-          
+
+          toOutline.clear();
+
           //Diagonal ascending plane
           do {
             if (*(board + (i - c) * n * n + j * n + k + c) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back((i - c + 1) * n * n + j * n + k + c - 1);
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            }
           } while (c);
 
+          toOutline.clear();
 
           //Diagonal descending plane
           do {
             if (*(board + (i + c) * n * n + j * n + k + c) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back((i + c - 1) * n * n + j * n + k + c - 1);
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            };
           } while (c);
+
+          toOutline.clear();
 
           //Up
           do {
             if (*(board + i * n * n + (j + c) * n + k) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back(i * n * n + (j + c -1) * n + k);
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            }
           } while (c);
-          
+
+          toOutline.clear();
 
           //3D diag 1
           do {
             if (*(board + (i + c) * n * n + (j + c) * n + k) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back((i + c - 1) * n * n + (j + c - 1) * n + k);
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            }
           } while (c);
 
+          toOutline.clear();
 
           //3D diag 2
           do {
             if (*(board + (i - c) * n * n + (j + c) * n + k) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back((i - c + 1) * n * n + (j + c - 1) * n + k);
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            }
           } while (c);
 
+          toOutline.clear();
 
           //3D diag 3
           do {
             if (*(board + i * n * n + (j + c) * n + (k + c)) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back(i * n * n + (j + c - 1) * n + k + c - 1);
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            }
           } while (c);
 
+          toOutline.clear();
 
           //3D diag 4
           do {
             if (*(board + i * n * n + (j + c) * n + (k - c)) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back(i * n * n + (j + c - 1) * n + (k - c + 1));
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            }
           } while (c);
 
-          
+          toOutline.clear();
+
           //3D diag 5
           do {
             if (*(board + (i - c) * n * n + (j + c) * n + (k - c)) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back((i - c + 1) * n * n + (j + c - 1) * n + (k - c + 1));
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            }
           } while (c);
 
+          toOutline.clear();
 
           //3D diag 6
           do {
             if (*(board + (i + c) * n * n + (j + c) * n + (k - c)) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back((i + c - 1) * n * n + (j + c - 1) * n + k - c + 1);
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            }
           } while (c);
+
+          toOutline.clear();
 
           //3D diag 7
           do {
             if (*(board + (i - c) * n * n + (j + c) * n + (k + c)) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back((i - c + 1) * n * n + (j + c - 1) * n + k + c -1);
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            }
           } while (c);
 
+          toOutline.clear();
 
           //3D diag 8
           do {
             if (*(board + (i + c) * n * n + (j + c) * n + (k + c)) == p) c++;
             else c = 0;
 
-            if (c == x) return 1;
+            toOutline.push_back((i + c - 1) * n * n + (j + c - 1) * n + k + c - 1);
+
+            if (c == x) {
+              for (int i : toOutline) {
+                *(board + i) = p + 2;
+              }
+              return 1;
+            }
           } while (c);
         }
       }
@@ -222,6 +342,8 @@ int main() {
 
   float f = 0.2f;
 
+  float cSpeed = 2.0f;
+  float cZoom = 1.0f;
   Camera3D* camera = new Camera3D();
   camera->position = (Vector3) {40.0f * n * f, 15.0f * n * f * 1.5f, 40.0f * n * f};
   camera->target = (Vector3){0.0f, 0.0f, 0.0f};
@@ -251,6 +373,19 @@ int main() {
       }
     }
 
+    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_LEFT)) {
+      Matrix rotation = MatrixRotate(Vector3Normalize(camera->up), cSpeed * GetFrameTime() * (IsKeyDown(KEY_RIGHT) ? 1 : -1));
+      Vector3 view = Vector3Subtract(camera->position, camera->target);
+      view = Vector3Transform(view, rotation);
+      camera->position = Vector3Add(camera->target, view);
+    } else if (IsKeyDown(KEY_UP)) {
+      camera->position = Vector3Add(camera->position, {-cZoom, -cZoom, -cZoom});
+    } else if (IsKeyDown(KEY_DOWN)) {
+      camera->position = Vector3Add(camera->position, {cZoom, cZoom, cZoom});
+    } else if (IsKeyDown(KEY_R)) {
+      camera->position = (Vector3) {40.0f * n * f, 15.0f * n * f * 1.5f, 40.0f * n * f};
+      camera->target = (Vector3){0.0f, 0.0f, 0.0f};
+    }
     //UpdateCamera(camera, CAMERA_PERSPECTIVE);
 
     BeginDrawing();
@@ -262,7 +397,7 @@ int main() {
     renderBoard(board, n, sel, s, g);
 
     EndMode3D();
-    
+
     std::string moveString = "Player " + std::to_string(p) + " moves";
     if (g) {
       moveString = "Player " + std::to_string(g) + " wins!";
@@ -270,8 +405,8 @@ int main() {
     DrawText(moveString.c_str(), SCREEN_WIDTH / 2.0f - MeasureText(moveString.c_str(), 30.0f) / 2.0f, SCREEN_HEIGHT - 50.0f, 30.0f, {255, 255, 255, 255});
 
     EndDrawing();
-    
-    g = getBoardState(board, n, x);
+
+    if (g == 0) g = getBoardState(board, n, x);
   }
 
   CloseWindow();
